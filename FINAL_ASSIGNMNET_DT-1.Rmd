@@ -1,0 +1,674 @@
+---
+title: "DECISION TREE ASSIGNMENT-1"
+author: "LAVANYA B"
+output: html_document
+---
+
+
+### Data Preparation
+
+```{r}
+
+#Loading the youth data from local
+youth_data=load("C:/Users/bunad/OneDrive/Desktop/Spring_2025/ML2/youth_data.Rdata")
+youth_data=df
+
+# Remove rows with missing values
+df <- na.omit(df)
+
+```
+
+#renaming
+```{r}
+# Renaming labels based on the codebook
+variable_labels <- c(
+  irsex       = "Sex",
+  NEWRACE2    = "Race",
+  HEALTH2     = "Self-Rated Health",
+  eduschlgo   = "Currently in School",
+  EDUSCHGRD2  = "Grade Level",
+  eduskpcom   = "School Completion",
+  imother     = "Mother Present",
+  ifather     = "Father Present",
+  income      = "Household Income",
+  govtprog    = "Government Assistance",
+  POVERTY3    = "Poverty Level",
+  PDEN10      = "Population Density",
+  COUTYP4     = "County Type",
+  
+  # Youth Experiences
+  schfelt     = "School Feelings",
+  tchgjob     = "Change in Job Situation",
+  avggrade    = "Average Grade",
+  stndscig    = "Peer Standards - Cigarette",
+  stndsmj     = "Peer Standards - Marijuana",
+  stndalc     = "Peer Standards - Alcohol",
+  stnddnk     = "Peer Standards - Drunk",
+  parchkhw    = "Parents Check Homework",
+  parhlphw    = "Parents Help with Homework",
+  PRCHORE2    = "Parents Give Chores",
+  PRLMTTV2    = "Limit TV Time",
+  parlmtsn    = "Limit Screen Time",
+  PRGDJOB2    = "Good Job Recognition",
+  PRPROUD2    = "Parental Pride",
+  argupar     = "Arguments with Parents",
+  YOFIGHT2    = "Youth Fights",
+  YOGRPFT2    = "Youth Group Fights",
+  YOHGUN2     = "Carried a Handgun",
+  YOSELL2     = "Sold Illegal Drugs",
+  YOSTOLE2    = "Stolen Something",
+  YOATTAK2    = "Attacked Someone",
+  PRPKCIG2    = "Parent Prohibit Cigarette Use",
+  PRMJEVR2    = "Parent Prohibit Marijuana Use",
+  prmjmo      = "Marijuana Use per Month",
+  PRALDLY2    = "Parent Prohibit Alcohol Use",
+  YFLPKCG2    = "Friends Prohibit Cigarette Use",
+  YFLTMRJ2    = "Friends Prohibit Marijuana Use",
+  yflmjmo     = "Friends Marijuana Use per Month",
+  YFLADLY2    = "Friends Prohibit Alcohol Use",
+  FRDPCIG2    = "Friend Peer Cigarette Use",
+  FRDMEVR2    = "Friend Marijuana Use",
+  frdmjmon    = "Friend Marijuana Use per Month",
+  FRDADLY2    = "Friend Alcohol Use",
+  talkprob    = "Discuss Problems with Parents",
+  PRTALK3     = "Parent Talks About School",
+  PRBSOLV2    = "Parent Helps Solve Problems",
+  PREVIOL2    = "Parent Teaches Avoiding Violence",
+  PRVDRGO2    = "Parent Drives to Activities",
+  GRPCNSL2    = "Group Counseling",
+  PREGPGM2    = "Drug Education Program",
+  YTHACT2     = "Youth Involvement in Activities",
+  DRPRVME3    = "Provider Visits",
+  ANYEDUC3    = "Any Drug Education",
+  rlgattd     = "Religious Attendance",
+  rlgimpt     = "Religion Importance",
+  rlgdcsn     = "Religion Influences Decisions",
+  rlgfrnd     = "Friends Are Religious",
+  
+  # Target Variables
+  alcflag     = "Alcohol Use Flag",
+  alcydays    = "Alcohol Use Frequency Category",
+  iralcage    = "Age at First Alcohol Use"
+)
+
+
+```
+
+```{r}
+# Defining the columns
+demographic_cols <- c("irsex", "NEWRACE2", "HEALTH2", "eduschlgo", "EDUSCHGRD2",
+                      "eduskpcom", "imother", "ifather", "income", "govtprog",
+                      "POVERTY3", "PDEN10", "COUTYP4")
+
+youth_experience_cols <- c("schfelt", "tchgjob", "avggrade", "stndscig", "stndsmj",
+                           "stndalc", "stnddnk", "parchkhw", "parhlphw", "PRCHORE2",
+                           "PRLMTTV2", "parlmtsn", "PRGDJOB2", "PRPROUD2", "argupar",
+                           "YOFIGHT2", "YOGRPFT2", "YOHGUN2", "YOSELL2", "YOSTOLE2",
+                           "YOATTAK2", "PRPKCIG2", "PRMJEVR2", "prmjmo", "PRALDLY2",
+                           "YFLPKCG2", "YFLTMRJ2", "yflmjmo", "YFLADLY2", "FRDPCIG2",
+                           "FRDMEVR2", "frdmjmon", "FRDADLY2", "talkprob", "PRTALK3",
+                           "PRBSOLV2", "PREVIOL2", "PRVDRGO2", "GRPCNSL2", "PREGPGM2",
+                           "YTHACT2", "DRPRVME3", "ANYEDUC3", "rlgattd", "rlgimpt",
+                           "rlgdcsn", "rlgfrnd")
+
+```
+
+## BINARY CLASSIFICATION
+
+```{r}
+#Converting binary to catergorical
+df$alcflag <- factor(df$alcflag, levels = c(1, 0), labels = c("Yes", "No"))
+
+#omits na values from subset 
+cleaned_youth_data_subset <- na.omit(df[, c(demographic_cols, youth_experience_cols, 'alcflag')])
+
+#cross checking after cleaning
+table(cleaned_youth_data_subset$alcflag)
+
+#Splitting data into training and testing
+set.seed(1)
+train <- sample(1:nrow(cleaned_youth_data_subset), 0.7 * nrow(cleaned_youth_data_subset))
+training_data_binary <- cleaned_youth_data_subset[train, ]
+testing_data_binary <- cleaned_youth_data_subset[-train, ]
+
+#To know factor levels consistent
+training_data_binary$alcflag <- factor(training_data_binary$alcflag, levels = c("Yes", "No"))
+testing_data_binary$alcflag <- factor(testing_data_binary$alcflag, levels = c("Yes", "No"))
+
+
+```
+
+
+#Decision tree-binary classification
+```{r}
+library(tree)
+binary_tree <- tree(alcflag ~ ., data = training_data_binary)
+
+# Plot the tree
+plot(binary_tree)
+text(binary_tree, pretty = 0)
+binary_tree
+
+
+```
+
+```{r}
+# Prediction and confusion matrix
+predict_binary <- predict(binary_tree, testing_data_binary, type = 'class')
+table(Predicted = predict_binary, Actual = testing_data_binary$alcflag)
+decision_accuracy <- mean(predict_binary == testing_data_binary$alcflag)
+decision_accuracy
+```
+
+```{r}
+# Checking class balance
+prop.table(table(training_data_binary$alcflag))
+prop.table(table(testing_data_binary$alcflag))
+```
+
+```{r}
+# Cross-validation 
+cv_binary <- cv.tree(binary_tree, FUN = prune.misclass)
+plot(cv_binary$size, cv_binary$dev, type = "b")
+```
+
+#Pruning-binary classification
+```{r}
+prune_binary <- prune.misclass(binary_tree, best = 5)
+plot(prune_binary)
+text(prune_binary, pretty = 0)
+```
+
+```{r}
+# Prediction after pruning
+prune_binary_prediction <- predict(prune_binary, testing_data_binary, type = "class")
+table(Predicted = prune_binary_prediction, Actual = testing_data_binary$alcflag)
+pruned_accuracy <- mean(prune_binary_prediction == testing_data_binary$alcflag)
+pruned_accuracy
+```
+
+#Bagging-binary classification
+```{r}
+library(randomForest)
+training_data_binary_clean <- na.omit(training_data_binary)
+bagging_binary <- randomForest(alcflag ~ ., data = training_data_binary_clean, mtry = ncol(training_data_binary_clean) - 1, importance = TRUE)
+bagging_binary
+```
+
+
+```{r}
+# Bagging prediction
+bagging_binary_prediction <- predict(bagging_binary, newdata = testing_data_binary, type = "class")
+table(Predicted = bagging_binary_prediction, Actual = testing_data_binary$alcflag)
+bagging_accuracy <- mean(bagging_binary_prediction == testing_data_binary$alcflag, na.rm = TRUE)
+bagging_accuracy
+```
+
+#Bagging important variable of binary classification
+
+```{r}
+library(dplyr)
+library(tidyverse)
+bagging_importance <- as.data.frame(importance(bagging_binary))
+bagging_importance$Variable <- rownames(bagging_importance)
+bagging_importance$Variable <- ifelse(bagging_importance$Variable %in% names(variable_labels),
+                                      variable_labels[bagging_importance$Variable],
+                                      bagging_importance$Variable)
+bagging_top10 <- bagging_importance %>% arrange(desc(MeanDecreaseGini)) %>% head(10)
+
+ggplot(bagging_top10, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_col(fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Top 10 Variable Importance - Bagging (Binary Classification)",
+       x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+
+
+```
+
+#RandomForest
+```{r}
+# Random Forest with tuning
+set.seed(1)
+rf_binary <- randomForest(alcflag ~ ., data = training_data_binary_clean, mtry = floor(sqrt(ncol(training_data_binary_clean))), ntree = 5000, importance = TRUE)
+rf_binary
+```
+
+```{r}
+#prediction of randomforest binary 
+rf_binary_prediction <- predict(rf_binary, newdata = testing_data_binary, type = 'class')
+
+rf_binary_prediction <- factor(rf_binary_prediction, levels = levels(testing_data_binary$alcflag))
+
+# Confusion Matrix
+table(Predicted = rf_binary_prediction, Actual = testing_data_binary$alcflag)
+
+# Accuracy Calculation
+rf_binary_accuracy <- mean(rf_binary_prediction == testing_data_binary$alcflag, na.rm = TRUE)
+rf_binary_accuracy
+table(testing_data_binary$alcflag)
+
+
+```
+
+#Random Forest important variable of binary classification
+
+```{r}
+rf_importance <- as.data.frame(importance(rf_binary))
+rf_importance$Variable <- rownames(rf_importance)
+rf_importance$Variable <- ifelse(rf_importance$Variable %in% names(variable_labels),
+                                 variable_labels[rf_importance$Variable],
+                                 rf_importance$Variable)
+rf_top10 <- rf_importance %>% arrange(desc(MeanDecreaseGini)) %>% head(10)
+
+ggplot(rf_top10, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_col(fill = "lightgreen") +
+  coord_flip() +
+  labs(title = "Top 10 Variable Importance - RF Binary ",
+       x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+
+```
+
+#Camparison of accuracy in binary classification
+
+```{r}
+
+accuracy_df <- data.frame(
+  Model = c("Decision Tree", "Pruned Tree", "Bagging", "Random Forest"),
+  Accuracy = c(decision_accuracy, pruned_accuracy, bagging_accuracy, rf_binary_accuracy)
+)
+
+
+# Plot accuracy comparison
+library(ggplot2)
+ggplot(accuracy_df, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(Accuracy, 4)), vjust = -0.3, size = 4.5) +
+  labs(title = "Accuracy Comparison - Binary Classification",
+       x = "Model",
+       y = "Accuracy") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+##MULTI-CLASS CLASSIFICATION
+
+```{r}
+library(tree)
+library(randomForest)
+library(gbm)
+library(ggplot2)
+
+df$alcydays <- factor(df$alcydays,
+                      levels = c(1, 2, 3, 4, 5, 6),
+                      labels = c("Never Used", "1-2 Days", "3-5 Days", 
+                                 "6-10 Days", "11-20 Days", "More Than 20 Days"))
+
+```
+
+
+```{r}
+cleaned_youth_data_subset_multi <- df[, c(demographic_cols, youth_experience_cols, 'alcydays')]
+cleaned_youth_data_subset_multi$alcydays <- as.factor(cleaned_youth_data_subset_multi$alcydays)
+
+# Splitting data into training and testing
+set.seed(1)
+train <- sample(1:nrow(cleaned_youth_data_subset_multi), 0.7 * nrow(cleaned_youth_data_subset_multi))
+training_data_multi <- cleaned_youth_data_subset_multi[train, ]
+testing_data_multi <- cleaned_youth_data_subset_multi[-train, ]
+
+# Checking class balance
+table(training_data_multi$alcydays)
+prop.table(table(training_data_multi$alcydays))  
+
+```
+
+#Decision Tree-multi class classification
+```{r}
+multi_tree <- tree(alcydays ~ ., training_data_multi)
+
+# Plot the tree
+plot(multi_tree)
+text(multi_tree, pretty = 0)
+predict_multi <- predict(multi_tree, testing_data_multi, type = 'class')
+confusion_matrix_multi <- table(Predicted = predict_multi, Actual = testing_data_multi$alcydays)
+confusion_matrix_multi
+multi_mse <- mean(predict_multi == testing_data_multi$alcydays)
+multi_mse
+```
+
+```{r}
+#cross validation
+cv_multi <- cv.tree(multi_tree, FUN = prune.misclass)
+cv_multi
+```
+
+# Pruning tree -multi class classification
+```{r}
+# Pruning the tree
+prune_multi <- prune.misclass(multi_tree, best = 3)
+plot(prune_multi)
+text(prune_multi, pretty = 0)
+prune_multi_prediction <- predict(prune_multi, testing_data_multi, type = "class")
+#Confusion matrix
+confusion_matrix_pruned <- table(Predicted = prune_multi_prediction, Actual = testing_data_multi$alcydays)
+multi_pruned_mse <- mean(prune_multi_prediction == testing_data_multi$alcydays)
+multi_pruned_mse
+```
+
+#Bagging- multiclass classification
+
+```{r}
+training_data_multi_clean <- na.omit(training_data_multi)
+training_data_multi_clean$alcydays <- droplevels(training_data_multi_clean$alcydays)
+testing_data_multi$alcydays <- factor(testing_data_multi$alcydays, levels = levels(training_data_multi_clean$alcydays))
+bagging_multi <- randomForest(alcydays ~ ., data = training_data_multi_clean, mtry = ncol(training_data_multi_clean) - 1, ntree = 5000)
+
+```
+
+```{r}
+#prediction
+bagging_multi_prediction <- predict(bagging_multi, newdata = testing_data_multi, type = "class")
+
+confusion_matrix_bagging <- table(Predicted = bagging_multi_prediction, Actual = testing_data_multi$alcydays)
+confusion_matrix_bagging
+multi_bag_mse <- mean(bagging_multi_prediction == testing_data_multi$alcydays, na.rm = TRUE)
+multi_bag_mse
+```
+
+#Bagging important variable of multi class classification
+
+```{r}
+bagging_multi_importance <- as.data.frame(importance(bagging_multi))
+bagging_multi_importance$Variable <- rownames(bagging_multi_importance)
+bagging_multi_importance$Variable <- ifelse(bagging_multi_importance$Variable %in% names(variable_labels),
+                                            variable_labels[bagging_multi_importance$Variable],
+                                            bagging_multi_importance$Variable)
+bagging_multi_top10 <- bagging_multi_importance %>% arrange(desc(MeanDecreaseGini)) %>% head(10)
+
+ggplot(bagging_multi_top10, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_col(fill = "orange") +
+  coord_flip() +
+  labs(title = "Top 10 Variables- Bagging (Multi-Class Classification)",
+       x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+
+```
+
+
+# Random Forest- multi class classification
+```{r}
+#Random Forest -Tuning
+mtry_values <- c(2, 4, 6, 8, 10, 12, 15)
+rf_accuracy_results <- numeric(length(mtry_values))
+rf_models <- list()
+
+set.seed(1)
+for (i in seq_along(mtry_values)) {
+  rf_model <- randomForest(alcydays ~ ., data = training_data_multi_clean, mtry = mtry_values[i], ntree = 5000, importance = TRUE)
+  rf_predictions <- predict(rf_model, newdata = testing_data_multi, type = "class")
+  rf_accuracy_results[i] <- mean(rf_predictions == testing_data_multi$alcydays, na.rm = TRUE)
+  rf_models[[i]] <- rf_model
+}
+
+best_index <- which.max(rf_accuracy_results)
+best_rf_model <- rf_models[[best_index]]
+yhat_randomforest_multi <- predict(best_rf_model, newdata = testing_data_multi, type = "class")
+confusion_matrix_rf <- table(Predicted = yhat_randomforest_multi, Actual = testing_data_multi$alcydays)
+confusion_matrix_rf 
+multi_rf_accuracy <- mean(yhat_randomforest_multi == testing_data_multi$alcydays, na.rm = TRUE)
+multi_rf_accuracy
+```
+
+#Random Forest important variable of multi class classification
+
+```{r}
+rf_multi_importance <- as.data.frame(importance(best_rf_model))
+rf_multi_importance$Variable <- rownames(rf_multi_importance)
+rf_multi_importance$Variable <- ifelse(rf_multi_importance$Variable %in% names(variable_labels),
+                                       variable_labels[rf_multi_importance$Variable],
+                                       rf_multi_importance$Variable)
+rf_multi_top10 <- rf_multi_importance %>% arrange(desc(MeanDecreaseGini)) %>% head(10)
+
+ggplot(rf_multi_top10, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_col(fill = "purple") +
+  coord_flip() +
+  labs(title = "Top 10 Variable Importance - RF(Multi-Class Classification)",
+       x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+
+
+```
+
+#Camparison of accuracy in multi class classification
+```{r}
+multi_accuracy_df <- data.frame(
+  Model = c("Decision Tree", "Pruned Tree", "Bagging", "Random Forest"),
+  Accuracy = c(multi_mse, multi_pruned_mse, multi_bag_mse, multi_rf_accuracy)
+)
+
+
+ggplot(multi_accuracy_df, aes(x = reorder(Model, Accuracy), y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = round(Accuracy, 4)), vjust = -0.3, size = 4.5) +
+  labs(title = "Accuracy Comparison Multi-Class Classification",
+       x = "Model",
+       y = "Accuracy") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+#To check class balance
+cat("Class balance in training data:\n")
+print(prop.table(table(training_data_multi_clean$alcydays)))
+
+```
+
+
+##REGRESSION
+```{r}
+
+library(dplyr)
+
+cleaned_youth_data_subset_reg <- df[, c(demographic_cols, youth_experience_cols, "iralcage")]
+
+cleaned_youth_data_subset_reg <- cleaned_youth_data_subset_reg %>%
+  filter(iralcage != 991) %>%
+  na.omit()
+# Splitting the data into training and spilting
+set.seed(1)
+train <- sample(1:nrow(cleaned_youth_data_subset_reg), 0.7 * nrow(cleaned_youth_data_subset_reg))
+training_data_reg <- cleaned_youth_data_subset_reg[train, ]
+testing_data_reg <- cleaned_youth_data_subset_reg[-train, ]
+
+
+
+```
+
+#regresion tree
+```{r}
+library(tree)
+# Fitting the regression tree
+reg_tree <- tree(iralcage ~ ., data = training_data_reg)
+plot(reg_tree)
+text(reg_tree, pretty = 0)
+reg_tree
+
+```
+
+#Regression Tree Prediction and Evaluation
+```{r}
+# Predicting on the test data
+predict_reg <- predict(reg_tree, testing_data_reg)
+# Calculating Mean Squared Error (MSE)
+reg_mse <- mean((predict_reg - testing_data_reg$iralcage)^2)
+reg_mse
+
+```
+
+#Regression Tree Cross-Validation
+```{r}
+# Performing cross-validation for pruning
+cv_reg <- cv.tree(reg_tree, FUN = prune.tree)
+cv_reg
+
+# Plotting cross-validation results
+par(mfrow = c(1, 2))
+plot(cv_reg$size, cv_reg$dev, type = "b", main = "Tree Size vs Deviance")
+plot(cv_reg$k, cv_reg$dev, type = "b", main = "Complexity Parameter vs Deviance")
+
+```
+
+#Pruning the Regression Tree
+```{r}
+# Pruning the tree to the optimal size (e.g., best = 4 from CV result)
+prune_reg <- prune.tree(reg_tree, best = 4)
+plot(prune_reg)
+text(prune_reg, pretty = 0)
+prune_reg
+
+# Predictions after pruning
+prune_reg_prediction <- predict(prune_reg, testing_data_reg)
+pruned_reg_mse <- mean((prune_reg_prediction - testing_data_reg$iralcage)^2)
+pruned_reg_mse
+
+
+```
+
+#Distribution of the target variable for regression
+```{r}
+summary(cleaned_youth_data_subset_reg$iralcage)
+
+# Histogram to visualize distribution
+library(ggplot2)
+ggplot(cleaned_youth_data_subset_reg, aes(x = iralcage)) +
+  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Age of First Alcohol Use (iralcage)",
+       x = "Age of First Alcohol Use",
+       y = "Count") +
+  theme_minimal()
+
+```
+
+#Bagging -Regression
+```{r}
+library(randomForest)
+
+training_data_reg_clean <- na.omit(training_data_reg)
+
+bagging_reg <- randomForest(
+  iralcage ~ ., 
+  data = training_data_reg_clean,
+  mtry = ncol(training_data_reg_clean) - 1,  
+  importance = TRUE
+)
+
+bagging_reg
+
+```
+
+#Prediction and Evaluation for Bagging 
+```{r}
+# Predict on the test data
+bagging_reg_prediction <- predict(bagging_reg, newdata = testing_data_reg)
+
+# Compute Mean Squared Error (MSE)
+reg_bag_mse <- mean((bagging_reg_prediction - testing_data_reg$iralcage)^2, na.rm = TRUE)
+reg_bag_mse 
+
+```
+
+#Bagging important variable of regression
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+importance_bagging_df <- as.data.frame(importance(bagging_reg))
+importance_bagging_df$Variable <- rownames(importance_bagging_df)
+
+importance_bagging_df$Variable <- ifelse(
+  importance_bagging_df$Variable %in% names(variable_labels),
+  variable_labels[importance_bagging_df$Variable],
+  importance_bagging_df$Variable
+)
+
+top10_bagging <- importance_bagging_df %>%
+  arrange(desc(`%IncMSE`)) %>%
+  head(10)
+
+ggplot(top10_bagging, aes(x = reorder(Variable, `%IncMSE`), y = `%IncMSE`)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Important Variables Bagging(Regression)",
+    x = "Variables",
+    y = "% Increase in MSE"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
+
+#Regression: Random Forest Model
+```{r}
+
+set.seed(1)  
+
+randomforest_reg <- randomForest(
+  iralcage ~ ., 
+  data = training_data_reg_clean,
+  mtry = floor(ncol(training_data_reg_clean) / 3),  
+  ntree = 500, 
+  importance = TRUE
+)
+
+randomforest_reg
+
+# Predict on the test data
+yhat_randomforest_reg <- predict(randomforest_reg, newdata = testing_data_reg)
+
+# Calculate Mean Squared Error (MSE)-# Lower MSE is better
+reg_rf_mse <- mean((yhat_randomforest_reg - testing_data_reg$iralcage)^2, na.rm = TRUE)
+reg_rf_mse 
+
+
+```
+
+#Random Forest important variable of regression
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+importance_rf_df <- as.data.frame(importance(randomforest_reg))
+importance_rf_df$Variable <- rownames(importance_rf_df)
+
+importance_rf_df$Variable <- ifelse(
+  importance_rf_df$Variable %in% names(variable_labels),
+  variable_labels[importance_rf_df$Variable],
+  importance_rf_df$Variable
+)
+
+
+top10_rf <- importance_rf_df %>%
+  arrange(desc(`%IncMSE`)) %>%
+  head(10)
+
+# Plot with ggplot2
+ggplot(top10_rf, aes(x = reorder(Variable, `%IncMSE`), y = `%IncMSE`)) +
+  geom_col(fill = "darkorange") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Important Variables RF Regression",
+    x = "Variables ",
+    y = "% Increase in MSE"
+  ) +
+  theme_minimal(base_size = 14)
+
+```
+
